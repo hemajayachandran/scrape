@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import sys
 import time
+from openpyxl.workbook import Workbook
 
 
 #launch url
@@ -41,6 +42,8 @@ with open('links.txt', 'r') as f:
 link_list = links.split(',')
 #print(link_list)
 i=0
+df = pd.DataFrame(columns=['Product Name', 'Ingredients', 'Related Products', 'Category', 'Gender/Life Stage',
+                    'Health Benefits'])
 for link in link_list:
     print(link)
     python_button = driver.find_element_by_xpath("//a[@href="+link+"]")
@@ -55,6 +58,7 @@ for link in link_list:
     i+=1
     driver.switch_to.window(driver.window_handles[i])
     soup_level2 = BeautifulSoup(driver.page_source, 'html.parser')
+
 
     #-------------Product Name----------------
     product_name = soup_level2.find('h1', {'class': 'product__name'})
@@ -110,9 +114,19 @@ for link in link_list:
             product_features['Health Benefits'].append(link.get_text().replace('\n', ''))
     print("Categories: ",product_features)
 
+    #-----------------Adding to dataframe---------
+    df = df.append({'Product Name': product_name.get_text(),
+                    'Ingredients': ingr_used,
+                    'Related Products': related_products,
+                    'Category': product_features['Category'],
+                    'Gender/Life Stage': product_features['Gender / Life\xa0Stage'],
+                    'Health Benefits': product_features['Health Benefits']}, ignore_index=True)
+    print(df.head())
+    break
     #driver.execute_script("window.history.go(-1)")
     back_button = driver.find_element_by_xpath("//a[@href='https://newrootsherbal.ca/en/products']")
     driver.execute_script("arguments[0].click();", back_button)
     time.sleep(5)
     driver.switch_to.window(driver.window_handles[0])
+df.to_excel('output.xlsx', index=False)
 print("Done")
