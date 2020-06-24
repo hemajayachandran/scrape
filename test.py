@@ -71,6 +71,13 @@ for link in link_list:
         string = ''
     print("Ingredients used:\n\t", ingr_used)
 
+    #-------------Related Products--------
+    rel_pdt = soup_level2.find('div', {'class': 'product__related'})
+    related_products = []
+    for pdt in rel_pdt.find_all('div', {'class': 'product__related__item__title'}):
+        related_products.append(pdt.get_text())
+    print("Related Products: ",related_products)
+
     #driver.execute_script("window.history.go(-1)")
     back_button = driver.find_element_by_xpath("//a[@href='https://newrootsherbal.ca/en/products']")
     driver.execute_script("arguments[0].click();", back_button)
