@@ -3,7 +3,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
 from bs4 import BeautifulSoup
 import pandas as pd
-import os
 import time
 from openpyxl.workbook import Workbook
 
@@ -15,18 +14,18 @@ driver = webdriver.Chrome(r'C:\Users\hemaa\Downloads\chromedriver_win32 (1)\chro
 driver.implicitly_wait(30)
 driver.get(url)
 
-#define pandas dataframe
+# Define pandas dataframe
 df = pd.DataFrame(columns=['PID','Product Name', 'Summary', 'NPN', 'Short Description', 'Full Description', 'Directions of use', 'Related Products', 'Category', 'Gender/Life Stage',
                     'Health Benefits', 'Ingredients Used'])
 df2 = pd.DataFrame(columns = ['PID', 'Format', 'Size', 'Code'])
 df4 = pd.DataFrame()
 
-#define lists to store the product links
+# Define empty list to store already visited product links
 links = []
-link_loaded = []
+
 
 while True:
-    #
+    # While loop to load the page to get the entire products
     try:
         loadmore = driver.find_element_by_id("loadMoreProducts")
         loadmore.click()
@@ -35,71 +34,49 @@ while True:
         print("Reached bottom of page")
         break
 
-
+# Selenium hands the page source to BeautifulSoup
 soup_level1 = BeautifulSoup(driver.page_source, 'html.parser')
 
+# Main page browser session
 window_before = driver.window_handles[0]
 
-print("****************************")
+# Empty list to store the product links
 link_loaded = []
+
+# BeautifulSoup finds all the product links and the loop begins
 for link in soup_level1.find_all('a', {'class': "product-list__item__link"}):
     text = link.get('href').replace("'", "")
     if text not in links:
-        #print("inside for")
         link_loaded.append(link.get('href'))
-print(len(link_loaded))
 
-count = 0
-#test_list = link_loaded[350:]
-length_of_links = len(link_loaded)
+# Loop will load each product and gets the data
 for link in link_loaded:
-    count += 1
+    #count += 1
     links.append(link)
-    print(link)
+
     product_id = link.split('/')[-1].replace("'", "")
 
-
-    #time.sleep(10)
+    # To open the product link in a new tab
     actions = ActionChains(driver)
     python_button = driver.find_element_by_xpath("//a[@href="+"'"+link+"'"+"]")
-    #python_button.send_keys(Keys.CONTROL + 't')
     actions.key_down(Keys.CONTROL).click(python_button).key_up(Keys.CONTROL).perform()
 
-
-
-
-    print("about to click")
-
-    #driver.execute_script("arguments[0].click();", python_button)
     time.sleep(5)
-    #print(driver.window_handles)
     window_after = driver.window_handles[1]
     driver.switch_to.window(window_after)
 
-    #driver.implicitly_wait(10)
-    print("Inside the product page")
 
-    #time.sleep(20)
-
-    #handles = driver.window_handles
-    #size = len(handles)
-    #print(size)
-
-    #window_after = driver.window_handles[1]
-    #driver.switch_to.window(window_after)
-
+    # Selenium hands over the page source to next level
     soup_level2 = BeautifulSoup(driver.page_source, 'html.parser')
 
 
-    #-------------Product Name----------------
+    # Finds the product name
     product_name = soup_level2.find('h1', {'class': 'product__name'})
-    print("Product Name: ", product_name.get_text())
 
-    #-------------Product Summary--------------
+    # Finds the product summary
     product_summary = soup_level2.find('div', {'class': 'product__properties__size'})
-    #print("Summary: ", product_summary.get_text())
 
-    #-------------NPN-------------------------
+    # Finds NPN
     npn = soup_level2.find('div', {'class': 'product__properties__npn'})
     if npn is not None:
         npn_value = npn.get_text()[5:]
@@ -107,11 +84,11 @@ for link in link_loaded:
         npn_value = None
 
 
-    #------------Format-----------------------
-    format = soup_level2.find('div', {'class': 'product__properties__format'})
+
+    #format = soup_level2.find('div', {'class': 'product__properties__format'})
 
 
-    #------------Short Description-------------
+    # Finds the product's short description
     short_descr_div = soup_level2.find('div', {'class': 'product__description__short'})
     list_of_p = short_descr_div.find_all('p')
     validated_list = []
@@ -125,21 +102,21 @@ for link in link_loaded:
     else:
         short_description = None
 
-    #-------------Full Description-------------
+    # Finds the long description of the product
     full_descr_div = soup_level2.find('div', {'class': 'product__description__full'})
     full_description = ''
     for p in full_descr_div.find_all('p'):
         full_description += p.get_text()
 
 
-    #-------------Directions of use--------------
+    # Finds the directions of using the product
     directions_of_use_div = soup_level2.find('div', {'class': 'product__use'})
     directions_of_use = ''
     for p in directions_of_use_div.find_all('p'):
         directions_of_use += p.get_text()
 
 
-    #-------------Ingredients------------
+    # Finds the ingredients
     df3 = pd.DataFrame()
     ingredients_div = soup_level2.find('div', {'class': 'product__ingredients'})
     ingredients_child_div = ingredients_div.find('div', {'class': 'product__ingredients__content'})
@@ -178,14 +155,13 @@ for link in link_loaded:
 
                 ingredients_text_list = []
 
-                #ingredient_text = ''
                 ingredients = []
                 concentration = []
             ingredient_text_list.append(ingredient_text)
             ingredient_text = ''
     df4 = df4.append(df3.tail(1))
 
-    #-------------Related Products--------
+    # Finds the related products list
     rel_pdt = soup_level2.find('div', {'class': 'product__related'})
     related_products = []
     for pdt in rel_pdt.find_all('div', {'class': 'product__related__item__title'}):
@@ -203,16 +179,13 @@ for link in link_loaded:
     drp_item_div = pdt_dropdown[0].find('div', {'class': 'categories'})
     item_div = drp_item_div.find_all('div', {'class': 'categories__col'})
     for item in item_div[0].find_all('a'):
-        #print(item_div[0])
         category_types['Category'].append(item.get_text(strip=True).replace('\n', ''))
     for item in item_div[1].find_all('a'):
-        #print(item_div[0])
         category_types['Gender / Life\xa0Stage'].append(item.get_text(strip=True).replace('\n', ''))
     for item in item_div[2].find_all('a'):
-        #print(item_div[0])
         category_types['Health Benefits'].append(item.get_text(strip=True).replace('\n', ''))
 
-    #---------------Other Categories--------------------
+    # Finds the product's categories
     other_categories_div = soup_level2.find('div', {'class': 'product__categories'})
     product_features = {'Category': [], 'Gender / Life\xa0Stage': [], 'Health Benefits': []}
     for link in other_categories_div.find_all('a'):
@@ -224,37 +197,34 @@ for link in link_loaded:
             product_features['Health Benefits'].append(link.get_text().replace('\n', ''))
 
 
-    #---------------Available Sizes--------------------
-
+    # Finds the available sizes of the product
     size_tab = soup_level2.find('div', {'class': 'tab'})
 
+    # Empty lists
     size = []
     pid = []
     for tb_row in size_tab.find_all('div', {'class': 'tab__row'}):
         cols = tb_row.findChildren(recursive=False)
-        #print(cols)
         col1 = [ele.get_text().replace('\n', '').strip() for ele in cols if ele.get_text().replace('\n', '').strip() not in ['Format', 'Size', 'Code']]
         if len(col1) > 0:
             size.append(col1)
             pid.append(product_id)
-            #print(size)
     for tb_row in size_tab.find_all('a', {'class': 'tab__row'}):
         cols = tb_row.findChildren(recursive=False)
-        #print(cols)
         col1 = [ele.get_text().replace('\n', '').strip() for ele in cols if ele.get_text().replace('\n', '').strip() not in ['Format', 'Size', 'Code']]
         if len(col1) > 0:
             size.append(col1)
             pid.append(product_id)
-            #print(size)
 
     temp_df = pd.DataFrame(size, columns=['Format', 'Size', 'Code'])
     temp_df['PID'] = pid
 
+    # Pandas dataframe will store the details of available sizes
     df2 = df2.append(temp_df)
 
 
 
-    #-----------------Adding to dataframe---------
+    # Pandas dataframe stores all product related details
     df = df.append({'PID': product_id,
                     'Product Name': product_name.get_text(),
                     'Summary': product_summary.get_text(),
@@ -268,20 +238,18 @@ for link in link_loaded:
                     'Health Benefits': ','.join(product_features['Health Benefits']),
                     'Ingredients Used': ''.join(ingredient_text_list)}, ignore_index=True)
 
-    print(df.shape)
-
-    #driver2 = driver
-
+    # Close the current product page session and go back to main page
     driver.close()
     time.sleep(5)
     driver.switch_to.window(window_before)
 
 
+# Merge main dataframe with ingredients dataframe
 res1 = pd.merge(df, df4, on='PID')
 
+# Merge above result with available sizes dataframe
 res = pd.merge(res1, df2, on='PID')
 
-print("Number of records: ", res.shape)
-
+# Load the final dataframe into an excel sheet.
 res.to_excel('output.xlsx', index=False)
 print("Done")
