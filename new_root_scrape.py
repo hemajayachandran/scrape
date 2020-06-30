@@ -265,9 +265,11 @@ def process_products(driver, soup_level):
         link_loaded = fetch_product_links(soup_level)
 
         count = 0
-        #new_links = link_loaded[155:]
+        #new_links = link_loaded[200:221]
         for link in link_loaded:
             count += 1
+            #if count == 100:
+            #    break
             print(link)
             found_links.append(link)
 
@@ -282,27 +284,22 @@ def process_products(driver, soup_level):
             print(product_name)
 
             product_summary = get_product_summary(soup_level2)
-            #print(product_summary)
 
             npn = get_npn(soup_level2)
-            #print(npn)
 
             short_description = get_short_description(soup_level2)
-            #print(short_description)
+
             long_description = get_long_description(soup_level2)
-            #print(long_description)
+
             directions_of_use = get_directions_of_use(soup_level2)
-            #print(directions_of_use)
+
             related_products = get_related_products(soup_level2)
-            #print(related_products)
+
             category, gender_life_stage, health_benefits = other_categories(soup_level2)
-            #print(category)
-            #print(gender_life_stage)
+
             available_sizes_df = get_available_sizes(soup_level2, product_id)
-            #print(available_sizes_df.head())
+
             ingredient_as_text, ingredients_df = get_ingredients(soup_level2, pd.DataFrame(), product_id)
-            #print(ingredient_as_text)
-            #print(ingredients_df.head())
 
             products_df = products_df.append({'PID': product_id,
                                               'Product Name': product_name,
@@ -316,17 +313,15 @@ def process_products(driver, soup_level):
                                               'Gender/Life Stage': gender_life_stage,
                                               'Health Benefits': health_benefits,
                                               'Ingredients Used': ''.join(ingredient_as_text)}, ignore_index=True)
-            #print(products_df)
-            if ingredients_df.empty == False:
-                #print("******Inside*******")
-                merge_ingredients_products = pd.merge(products_df, ingredients_df, on='PID')
-                merge_products_available_sizes = pd.merge(merge_ingredients_products, available_sizes_df, on='PID')
-            else:
-                #print("Inside no ingr")
-                merge_products_available_sizes = pd.merge(products_df, available_sizes_df, on='PID')
 
-            final_df= final_df.append(merge_products_available_sizes)
-            #print(final_df.head())
+            if ingredients_df.empty == False:
+                merge_products_available_sizes = pd.merge(products_df, available_sizes_df, on='PID')
+                merge_products = pd.merge(merge_products_available_sizes, ingredients_df, on='PID')
+            else:
+                merge_products = pd.merge(products_df, available_sizes_df, on='PID')
+
+            final_df= final_df.append(merge_products)
+
             print("Count:", count)
             time.sleep(10)
             second_driver.close()
@@ -351,6 +346,10 @@ if __name__ == "__main__":
 
         soup_level = beautifulsoup(driver)
         output_df = process_products(driver, soup_level)
-        output_df.to_excel('output_new.xlsx', index=False)
+        columns = list(output_df.columns)
+        a, b, c, d = columns.index('Ingredients Used'), columns.index('Format'), columns.index('Size'), columns.index('Code')
+        columns[a], columns[b], columns[c], columns[d] = columns[b], columns[c], columns[d], columns[a]
+        output_df = output_df[columns]
+        output_df.to_excel('output_file.xlsx', index=False)
     except Exception as e:
         print("Exception occured")
