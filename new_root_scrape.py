@@ -6,6 +6,11 @@ import pandas as pd
 import time
 from openpyxl.workbook import Workbook
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import sys
+
 
 def create_session(url):
     try:
@@ -34,6 +39,23 @@ def beautifulsoup(driver):
     except Exception as e:
         print("Exception occured while beautifulsoup creation")
 
+def check_frame(soup_level, driver):
+    while True:
+        try:
+            iframes_list = soup_level.find_all('iframe')
+            id = str(iframes_list[-1]).split()[3]
+            if WebDriverWait(driver, 5).until(EC.frame_to_be_available_and_switch_to_it((By.ID, id[4:-1]))):
+                print("Inside frame")
+                if driver.find_element_by_class_name("icon-close"):
+                    print("Found close icon")
+                    driver.find_element_by_class_name("icon-close").click()
+                    driver.switch_to.default_content()
+            break
+        except Exception as e:
+            print("Cannot find frame {0}".format(e))
+            break
+    return driver
+
 def fetch_product_links(soup_level):
     try:
         link_loaded = []
@@ -46,16 +68,19 @@ def fetch_product_links(soup_level):
 
 def open_product_link(driver, link):
     try:
+
         actions = ActionChains(driver)
         python_button = driver.find_element_by_xpath("//a[@href="+"'"+link+"'"+"]")
         actions.key_down(Keys.CONTROL).click(python_button).key_up(Keys.CONTROL).perform()
 
         time.sleep(5)
         #window_after = driver.window_handles[1]
+
         driver.switch_to.window(driver.window_handles[1])
         return driver
     except Exception as e:
-        print("Exception occured while opening product link")
+        print("Exception occured while opening product link {0}".format(str(e)))
+        sys.exit(1)
 
 def get_product_id(link):
     try:
@@ -273,6 +298,8 @@ def process_products(driver, soup_level):
             print(link)
             found_links.append(link)
 
+            #check_frame(driver)
+            time.sleep(5)
             second_driver = open_product_link(driver, link)
 
             product_id = get_product_id(link)
@@ -323,14 +350,14 @@ def process_products(driver, soup_level):
             final_df= final_df.append(merge_products)
 
             print("Count:", count)
-            time.sleep(10)
+            time.sleep(5)
             second_driver.close()
 
             driver.switch_to.window(driver.window_handles[0])
         return final_df
 
     except Exception as e:
-        print("Exception occured inside process_products")
+        print("Exception occured inside process_products {0}".format(e))
 
 
 
@@ -345,6 +372,8 @@ if __name__ == "__main__":
         load_page(driver)
 
         soup_level = beautifulsoup(driver)
+        time.sleep(20)
+        check_frame(soup_level, driver)
         output_df = process_products(driver, soup_level)
         columns = list(output_df.columns)
         a, b, c, d = columns.index('Ingredients Used'), columns.index('Format'), columns.index('Size'), columns.index('Code')
